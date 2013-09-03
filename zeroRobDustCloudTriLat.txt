@@ -1,0 +1,236 @@
+//Declare any variables shared between functions here
+float err,err1,err2;
+double pingTargetOne[3],pingTargetTwo[3],pingTargetThree[3],pingDistItemOne[3],pingDistItemTwo[3],
+	pingDistItemThree[3],pingOnePos[3],pingTwoPos[3],pingThreePos[3],satPos[3],item1Pos[3],item2Pos[3],pTargetOne[3],
+	pTargetTwo[3],pTargetThree[3];
+float posTarget[3],itemDist[3],d,attTarget[3],targetAttRate[3];
+int pingNumber,count,currentPhase,dir,pNumber,itemTarget;
+ZRState myState;
+bool createdDustCloud;
+
+void init(){
+	//This function is called once when your code is first loaded.
+
+	//IMPORTANT: make sure to set any variables that need an initial value.
+	//Do not assume variables will be set to 0 automatically!
+	createdDustCloud=false;
+	pingNumber=0;
+	pNumber=-1;//-1
+	err=0.01;
+	err1=0.05;
+	err2=.035;
+	targetAttRate[2]=.5;
+	pingTargetOne[0]=0.1;pingTargetOne[1]=-0.1;pingTargetOne[2]=0.0;
+	pTargetOne[0]=0.0;pTargetOne[1]=0.15;pTargetOne[2]=0.0;
+	pTargetTwo[0]=0.0;pTargetTwo[1]=0.15;pTargetTwo[2]=-0.2;//-0.2
+	pTargetThree[0]=0.0;pTargetThree[1]=0.65;/*0.65*/pTargetThree[2]=0.0;
+	count=0;
+	d=0.3;
+	dir=1;
+}
+
+void loop(){
+	currentPhase=game.getCurrentPhase();
+	attTarget[0]=0.0;attTarget[1]=0.0;attTarget[2]=0.0;
+	if(currentPhase==1){
+		if(!createdDustCloud){
+			game.startObstacle();
+			api.setAttRateTarget(targetAttRate);
+		}
+		if(myState<0)
+			dir=-1;
+	}
+	//This function is called once per second.  Use it to control the satellite.
+	api.getMyZRState(myState);
+	game.pingForItems(itemDist);
+	
+	if(pingNumber==0){
+		for(int i=0;i<3;i++){
+			posTarget[i]=pingTargetOne[i];
+		}
+		api.setPositionTarget(posTarget);
+		if(fabs(myState[0]-pingTargetOne[0])<err1){
+			if(fabs(myState[1]-pingTargetOne[1])<err1){
+				if(fabs(myState[2]-pingTargetOne[2])<err1){
+					createCloud(.15f,targetAttRate);
+					if(createdDustCloud){
+						pingNumber=1;
+					}
+				}
+			}
+		}
+	}
+	else if(createdDustCloud&&pNumber==-1){
+		pNumber=0;
+	}
+	if(pNumber==0){
+		for(int i=0;i<3;i++){
+			posTarget[i]=pTargetOne[i];
+		}
+		api.setPositionTarget(posTarget);
+		if(fabs(myState[0]-pTargetOne[0])<err){
+			if(fabs(myState[1]-pTargetOne[1])<err){
+				if(fabs(myState[2]-pTargetOne[2])<err){
+					pingDistItemTwo[pNumber]=itemDist[1];
+					pingDistItemThree[pNumber]=itemDist[2];
+					pingDistItemOne[pNumber]=itemDist[0];
+					for(int i=0;i<3;i++){
+						pingOnePos[i]=myState[i];
+					}
+					//createCloud(0.29,targetAttRate);
+					//if(createdDustCloud){
+						//pingNumber=1;
+						//createdDustCloud=false;
+					//}
+					pNumber=1;
+				}
+			}
+		}
+	}
+	else if(pNumber==1){
+		for(int i=0;i<3;i++){
+			posTarget[i]=pTargetTwo[i];
+		}
+		api.setPositionTarget(posTarget);
+		if(fabs(myState[0]-pTargetTwo[0])<err){
+			if(fabs(myState[1]-pTargetTwo[1])<err){
+				if(fabs(myState[2]-pTargetTwo[2])<err){
+					pingDistItemTwo[pNumber]=itemDist[1];
+					pingDistItemThree[pNumber]=itemDist[2];
+					pingDistItemOne[pNumber]=itemDist[0];
+					for(int i=0;i<3;i++){
+						pingTwoPos[i]=myState[i];
+					}
+					//createCloud(0.29,targetAttRate);
+					//if(createdDustCloud){
+						//pingNumber=2;
+						//createdDustCloud=false;
+					//}
+					pNumber=2;
+				}
+			}
+		}
+	}
+	else if(pNumber==2){
+		//DEBUG(("\nPingOnePos: (%f,%f,%f)",pingOnePos[0],pingOnePos[1],pingOnePos[2]));
+		for(int i=0;i<3;i++){
+			posTarget[i]=pTargetThree[i];
+		}
+		api.setPositionTarget(posTarget);
+		if(fabs(myState[0]-pTargetThree[0])<err){
+			if(fabs(myState[1]-pTargetThree[1])<err){
+				if(fabs(myState[2]-pTargetThree[2])<err){
+					pingDistItemTwo[pNumber]=itemDist[1];
+					pingDistItemThree[pNumber]=itemDist[2];
+					pingDistItemOne[pNumber]=itemDist[0];
+					for(int i=0;i<3;i++){
+						pingThreePos[i]=myState[i];
+					}
+					//createCloud(0.29,targetAttRate);
+					//if(createdDustCloud){
+						//pingNumber=3;
+						//createdDustCloud=false;
+					//}
+					pNumber=3;
+				}
+			}
+		}
+	}
+	if(pNumber==3){
+		TriLatItem2();
+		TriLatItem1();
+		pTargetOne[2]=pTargetOne[0];
+		pTargetOne[0]=pTargetOne[1];
+		pTargetOne[1]=pTargetOne[2];
+		pTargetThree[2]=pTargetThree[0];
+		pTargetThree[0]=pTargetThree[1];
+		pTargetThree[1]=pTargetThree[2];
+		twoPointTriLat(pTargetOne,pTargetThree,pingDistItemOne[0],pingDistItemOne[2]);
+		pNumber=4;
+	}
+	if(pNumber==4&&!game.haveObject(0)){
+		if(!game.haveObject(1)){//(2)
+			for(int i=0;i<3;i++){
+				posTarget[i]=item2Pos[i];//2
+			}
+			itemTarget=1;//2
+		}
+		if(!game.haveObject(0)&&game.haveObject(1)){//(2)
+			for(int i=0;i<3;i++){
+				posTarget[i]=satPos[i];
+			}
+			itemTarget=0;
+		}
+		if(itemDist[itemTarget]<err2){
+			attTarget[0]=.5;
+			for(int i=0;i<3;i++){
+				posTarget[i]=myState[i];
+			}
+		}
+		else{
+			attTarget[0]=0;
+		}
+		api.setAttRateTarget(attTarget);
+		api.setPositionTarget(posTarget);
+	}
+	else if(game.haveObject(0)){
+		if(myState[0]<0){
+			posTarget[0]=0;
+			posTarget[1]=-.075;
+		}
+		else{
+			posTarget[0]=-.075*dir;
+			posTarget[1]=-.025;
+		}
+		api.setVelocityTarget(posTarget);
+	}
+	DEBUG(("\nsatPos: (%f,%f,%f)",satPos[0],satPos[1],satPos[2]));
+	DEBUG(("\ncount: %i\nitemDists:(%f,%f,%f)",count,pingDistItemOne[0],pingDistItemOne[1],pingDistItemOne[2]));
+}
+
+void twoPointTriLat(double p1[],double p2[],float r1,float r2){
+     satPos[0]=dir*((-mathSquare(p2[0])+2*p1[1]*p2[1]-mathSquare(p2[1])+mathSquare(r2)-mathSquare(r1))/(-2*p2[0]));
+     satPos[1]=sqrtf(mathSquare(r1)-((mathSquare(-mathSquare(p2[0])+2*p1[1]*p2[1]-mathSquare(p2[1])+mathSquare(r2)-mathSquare(r1)))/(4*mathSquare(p2[0]))))+pTargetOne[0];
+     satPos[2]=0.0;
+}
+
+void TriLatItem2(){
+	d = fabsf(pTargetTwo[2]-pTargetOne[2]);
+	item1Pos[2] = pTargetOne[2]*dir + ( mathSquare(d) + mathSquare(pingDistItemThree[0]) - mathSquare(pingDistItemThree[1]))/(2 * d);
+	d = fabsf(pTargetThree[1]-pTargetOne[1]);
+	item1Pos[1] = pTargetOne[1] + ( mathSquare(d) + mathSquare(pingDistItemThree[0]) - mathSquare(pingDistItemThree[2]))/(2 * d);
+	item1Pos[0] = 0.0;
+	item1Pos[2]=-item1Pos[2];
+}
+
+void TriLatItem1(){
+	d = fabsf(pTargetTwo[2]-pTargetOne[2]);
+	item2Pos[2] = pTargetOne[2]*dir + ( mathSquare(d) + mathSquare(pingDistItemTwo[0]) - mathSquare(pingDistItemTwo[1]))/(2 * d);
+	d = fabsf(pTargetThree[1]-pTargetOne[1]);
+	item2Pos[1] = pTargetOne[1] + ( mathSquare(d) + mathSquare(pingDistItemTwo[0]) - mathSquare(pingDistItemTwo[2]))/(2 * d);
+	item2Pos[0] = 0.0;
+	item2Pos[2]=-item2Pos[2];
+}
+
+void createCloud(float rad, float targetAttRate[3])
+{
+	float currentObsSize;
+	currentObsSize=game.getCurrentObstacleSize();
+	if(!createdDustCloud)
+	{
+		//game.startObstacle();
+		api.setAttRateTarget(targetAttRate);
+	}
+	if(currentObsSize>=rad)
+	{
+		attTarget[0]=0.0;
+		attTarget[1]=0.0;
+		attTarget[2]=0.0;
+		api.setAttRateTarget(attTarget);
+		DEBUG(("\nobs:"));
+		if(game.stopObstacle()){
+			game.stopObstacle();
+			createdDustCloud=true;
+		}
+	}
+}
